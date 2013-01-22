@@ -1,0 +1,78 @@
+<?php
+function sitemap_multiple_menu_render_menu ($menu) {
+    $output = "<ul class=\"menu\">";
+    foreach ($menu as $item) {
+	$link = $item["link"];
+	if ($link["hidden"]) {
+	    continue;
+	}
+	if ($item["below"]) {
+	    $output .= "<li class=\"expanded\"><a href=\"" . check_url(url($link["href"], $link["options"])) . "\">" . $link["title"] . "</a></li>";
+	    $output .= sitemap_multiple_menu_render_menu($item["below"]);
+	}
+        else {
+	    $output .= "<li class=\"leaf\"><a href=\"" . check_url(url($link["href"], $link["options"])) . "\">" . $link["title"] . "</a></li>";
+        }
+    }
+
+    $output .= "</ul>";
+    return $output;
+}
+
+function sitemap_multiple_menu_content () {
+   
+    $selected = (variable_get("sitemap_multiple_menu_selected", array()));
+    $selected = array_filter($selected);
+    $items = array();
+    foreach ($selected as $name) {
+        $items = array_merge($items, menu_tree_all_data($name));
+    }
+    $output = "<h1>Sitemap</h1>";
+    $output .= "<span id=\"sitemap\">";
+    $output .= sitemap_multiple_menu_render_menu($items);
+    $output .= "</span>";
+    return $output;
+}
+
+
+function sitemap_multiple_menu_menu () {
+    $items = array();
+
+    $items["sitemap"] = array (
+        "title" => t("Sitemap"),
+        "page callback" => "sitemap_multiple_menu_content",
+        "access arguments" => array("access content"),
+        "type" => MENU_CALLBACK
+    );
+
+    $items["admin/config/search/sitemap_multiple_menu"] = array (
+        "title" => t("Sitemap Multiple Menu Config"),
+        "page callback" => "drupal_get_form",
+        "page arguments" => array("sitemap_multiple_menu_config_form"),
+        "access arguments" => array("administer site configuration"),
+        "type" => MENU_NORMAL_ITEM
+    );
+    return $items;
+}
+
+function sitemap_multiple_menu_config_form () {
+    $form["sitemap_multiple_menu_selected"] = array (
+        "#title" => "Select Menu",
+        "#type" => "checkboxes",
+        "#options" => sitemap_multiple_menu_get_menus(), 
+        "#default_value" => variable_get("sitemap_multiple_menu_selected", array()) 
+   ); 
+   return system_settings_form($form);
+}
+
+function sitemap_multiple_menu_get_menus($all = TRUE) {
+  if ($custom_menus = menu_load_all()) {
+    if (!$all) {
+      $custom_menus = array_diff_key($custom_menus, menu_list_system_menus());
+    }
+    foreach ($custom_menus as $menu_name => $menu) {
+      $custom_menus[$menu_name] = t($menu['title']);
+    }
+  }
+  return $custom_menus;
+}
